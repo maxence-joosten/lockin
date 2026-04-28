@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  lockin — terminal focus session manager for Linux
+#  blocks distracting sites via /etc/hosts, kills distracting apps,
+#  shows a random quote + ascii art countdown timer
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Config — edit these to match your habits ─────────────────────────────────
+
+# ── DNS flush ─────────────────────────────────────────────────────────────────
+
+# ── Website blocking via /etc/hosts ──────────────────────────────────────────
+
+# ── App killing ───────────────────────────────────────────────────────────────
+
+# ── Random arttime artwork ────────────────────────────────────────────────────
+
+# ── Random quote ──────────────────────────────────────────────────────────────
+
+# ── Fallback countdown (used when arttime and termdown are both absent) ───────
+
+# ── Cleanup — runs on ctrl+c or unexpected exit ───────────────────────────────
+
+# ── Main ──────────────────────────────────────────────────────────────────────

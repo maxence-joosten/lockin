@@ -81,6 +81,25 @@ unblock_sites() {
 
 # ── App killing ───────────────────────────────────────────────────────────────
 
+kill_apps() {
+  for app in "${BLOCKED_APPS[@]}"; do
+    PIDS=$(pgrep -f "$app")
+    [[ -z "$PIDS" ]] && continue
+
+    echo "  $(yellow '→') closing $app..."
+
+    pkill -15 -f "$app"
+    sleep 2
+
+    if pgrep -f "$app" &>/dev/null; then
+      echo "  $(red '⚠') force killing $app"
+      pkill -9 -f "$app"
+    else
+      echo "  $(green '✓') closed $app"
+    fi
+  done
+}
+
 # ── Random arttime artwork ────────────────────────────────────────────────────
 
 # ── Random quote ──────────────────────────────────────────────────────────────

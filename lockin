@@ -100,12 +100,35 @@ kill_apps() {
   done
 }
 
-# ── Random arttime artwork ────────────────────────────────────────────────────
-
 # ── Random quote ──────────────────────────────────────────────────────────────
 
-# ── Fallback countdown (used when arttime and termdown are both absent) ───────
-
-# ── Cleanup — runs on ctrl+c or unexpected exit ───────────────────────────────
+_random_quote() {
+  if command -v fortune &>/dev/null; then
+    fortune -s |
+      tr -d '\r' |
+      tr '\n' ' ' |
+      tr '\t' ' ' |
+      sed -E 's/[[:space:]]+/ /g' |
+      sed 's/--/ - /g' |
+      sed 's/"/'\''/g' |
+      sed 's/[^[:print:]]//g' |
+      sed 's/^ *//; s/ *$//' |
+      cut -c1-180
+  else
+    local quotes=(
+      "focus is a matter of deciding what things you're not going to do."
+      "the scarce resource isn't ideas, it's the ability to execute."
+      "one hour of focused work beats eight hours of fragmented effort."
+      "deep work is the superpower of the 21st century."
+      "do the hard thing first. everything else is just noise."
+      "clarity about what matters most is the precondition for great work."
+      "protect your attention like it's your most valuable asset — it is."
+      "what you do not start today cannot be finished tomorrow."
+      "small disciplines repeated daily lead to great achievements."
+      "the successful warrior is the average person with laser-like focus."
+    )
+    echo "${quotes[$RANDOM % ${#quotes[@]}]}"
+  fi
+}
 
 # ── Main ──────────────────────────────────────────────────────────────────────

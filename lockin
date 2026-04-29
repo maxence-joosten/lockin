@@ -8,9 +8,76 @@
 
 # ── Config — edit these to match your habits ─────────────────────────────────
 
+BLOCK_MARKER="# lockin-block"
+
+BLOCKED_SITES=(
+  "twitter.com" "www.twitter.com"
+  "x.com" "www.x.com"
+  "reddit.com" "www.reddit.com" "old.reddit.com"
+  "youtube.com" "www.youtube.com" "m.youtube.com"
+  "instagram.com" "www.instagram.com"
+  "tiktok.com" "www.tiktok.com"
+  "facebook.com" "www.facebook.com"
+  "twitch.tv" "www.twitch.tv"
+  "netflix.com" "www.netflix.com"
+  "linkedin.com" "www.linkedin.com"
+  "anilist.co" "www.anilist.co"
+)
+
+# Process names to kill (matched with pkill -f)
+BLOCKED_APPS=(
+  "vesktop"
+  "steam"
+  "stremio"
+)
+
+# ── Colour helpers ────────────────────────────────────────────────────────────
+
+bold() { printf '\033[1m%s\033[0m' "$*"; }
+dim() { printf '\033[2m%s\033[0m' "$*"; }
+green() { printf '\033[32m%s\033[0m' "$*"; }
+yellow() { printf '\033[33m%s\033[0m' "$*"; }
+cyan() { printf '\033[36m%s\033[0m' "$*"; }
+red() { printf '\033[31m%s\033[0m' "$*"; }
+
 # ── DNS flush ─────────────────────────────────────────────────────────────────
 
+flush_dns() {
+  if command -v resolvectl &>/dev/null; then
+    sudo resolvectl flush-caches 2>/dev/null
+  elif command -v systemd-resolve &>/dev/null; then
+    sudo systemd-resolve --flush-caches 2>/dev/null
+  fi
+}
+
 # ── Website blocking via /etc/hosts ──────────────────────────────────────────
+
+block_sites() {
+  if grep -q "$BLOCK_MARKER" /etc/hosts 2>/dev/null; then
+    echo "  $(yellow '⚠') sites already blocked"
+    return
+  fi
+
+  printf "  $(cyan '→') blocking %d domains..." "${#BLOCKED_SITES[@]}"
+  {
+    echo ""
+    echo "$BLOCK_MARKER"
+    for site in "${BLOCKED_SITES[@]}"; do
+      echo "127.0.0.1  $site"
+    done
+    echo "$BLOCK_MARKER end"
+  } | sudo tee -a /etc/hosts >/dev/null
+
+  flush_dns
+  echo " $(green '✓')"
+}
+
+unblock_sites() {
+  printf "  $(cyan '→') unblocking sites..."
+  sudo sed -i "/$BLOCK_MARKER/,/$BLOCK_MARKER end/d" /etc/hosts
+  flush_dns
+  echo " $(green '✓')"
+}
 
 # ── App killing ───────────────────────────────────────────────────────────────
 

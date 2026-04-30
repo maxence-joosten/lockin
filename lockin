@@ -57,7 +57,7 @@ block_sites() {
     echo "  $(yellow '⚠') sites already blocked"
     return
   fi
-  printf "  $(cyan '→') blocking %d domains..." "${#BLOCKED_SITES[@]}"
+  printf "  $(cyan '→') blocking %d domains...\n" "${#BLOCKED_SITES[@]}"
   {
     echo ""
     echo "$BLOCK_MARKER"
@@ -182,27 +182,35 @@ _cleanup() {
 main() {
   clear
   echo ""
-  echo "  $(bold "lockin")"
-  echo "  $(dim "────────────────────────")"
+  echo "  $(bold "lockin") ~ $(dim "focus session manager")"
+  echo "  $(dim "────────────────────────────")"
   echo ""
-  printf "  $(bold "how many minutes?") "
+
+  printf "  $(green '›') how many minutes?      "
   read -r DURATION
   if ! [[ "$DURATION" =~ ^[0-9]+$ ]] || ((DURATION == 0)); then
     echo "  $(red 'error:') enter a positive whole number." >&2
     exit 1
   fi
-  printf "  $(bold "block distracting websites?") (y/n) "
+
+  printf "  $(green '›') block websites? $(dim '(y/n)')  "
   read -r BLOCK_WEB
-  printf "  $(bold "close distracting apps?") (y/n) "
+
+  printf "  $(green '›') close apps? $(dim '(y/n)')      "
   read -r BLOCK_APPS
+
   echo ""
-  echo "  $(dim "────────────────────────")"
+  echo "  $(dim "────────────────────────────")"
+
   SITES_BLOCKED=0
+
   if [[ "$BLOCK_WEB" =~ ^[Yy] ]]; then
     block_sites
     SITES_BLOCKED=1
   fi
+
   [[ "$BLOCK_APPS" =~ ^[Yy] ]] && kill_apps
+
   trap '_cleanup' SIGINT SIGTERM
   run_session
   trap - SIGINT SIGTERM

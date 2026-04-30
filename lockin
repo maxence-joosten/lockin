@@ -131,4 +131,84 @@ _random_quote() {
   fi
 }
 
+# ── Session runner ───────────────────────────────────────────────────────────
+
+run_session() {
+  QUOTE=$(_random_quote)
+  START_TIME=$(date +%s)
+
+  echo ""
+  echo "  $(bold "starting ${DURATION}-minute session")"
+  echo ""
+
+  if command -v arttime &>/dev/null; then
+    arttime --nolearn --random \
+      -g "${DURATION}m" \
+      -t "❝ $QUOTE ❞"
+  else
+    echo "  $(yellow '⚠') arttime not found — using fallback timer"
+    sleep "${DURATION}m"
+  fi
+
+  END_TIME=$(date +%s)
+  ELAPSED=$(((END_TIME - START_TIME) / 60))
+}
+
+# ── Finish session ────────────────────────────────────────────────────────────
+
+_finish() {
+  echo ""
+
+  [[ "$SITES_BLOCKED" == "1" ]] && unblock_sites
+
+  echo ""
+  echo "  $(bold "session ended") — $(date '+%H:%M')"
+
+  if ((ELAPSED >= DURATION)); then
+    echo "  $(green "✓ completed") — you focused for $(bold "${ELAPSED}") minutes."
+  else
+    echo "  $(yellow "⚠ quit early") — you focused for $(bold "${ELAPSED}") minutes."
+  fi
+
+  echo ""
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
+
+main() {
+  clear
+  echo ""
+  echo "  $(bold "lockin")"
+  echo "  $(dim "────────────────────────")"
+  echo ""
+
+  printf "  $(bold "how many minutes?") "
+  read -r DURATION
+  if ! [[ "$DURATION" =~ ^[0-9]+$ ]] || ((DURATION == 0)); then
+    echo "  $(red 'error:') enter a positive whole number." >&2
+    exit 1
+  fi
+
+  printf "  $(bold "block distracting websites?") (y/n) "
+  read -r BLOCK_WEB
+
+  printf "  $(bold "close distracting apps?") (y/n) "
+  read -r BLOCK_APPS
+
+  echo ""
+  echo "  $(dim "────────────────────────")"
+
+  SITES_BLOCKED=0
+
+  if [[ "$BLOCK_WEB" =~ ^[Yy] ]]; then
+    block_sites
+    SITES_BLOCKED=1
+  fi
+
+  [[ "$BLOCK_APPS" =~ ^[Yy] ]] && kill_apps
+
+  run_session
+  _finish
+}
+
+main "$@"

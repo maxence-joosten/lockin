@@ -57,7 +57,6 @@ block_sites() {
     echo "  $(yellow '⚠') sites already blocked"
     return
   fi
-
   printf "  $(cyan '→') blocking %d domains..." "${#BLOCKED_SITES[@]}"
   {
     echo ""
@@ -67,7 +66,6 @@ block_sites() {
     done
     echo "$BLOCK_MARKER end"
   } | sudo tee -a /etc/hosts >/dev/null
-
   flush_dns
   echo " $(green '✓')"
 }
@@ -85,12 +83,9 @@ kill_apps() {
   for app in "${BLOCKED_APPS[@]}"; do
     PIDS=$(pgrep -f "$app")
     [[ -z "$PIDS" ]] && continue
-
     echo "  $(yellow '→') closing $app..."
-
     pkill -15 -f "$app"
     sleep 2
-
     if pgrep -f "$app" &>/dev/null; then
       echo "  $(red '⚠') force killing $app"
       pkill -9 -f "$app"
@@ -104,16 +99,7 @@ kill_apps() {
 
 _random_quote() {
   if command -v fortune &>/dev/null; then
-    fortune -s |
-      tr -d '\r' |
-      tr '\n' ' ' |
-      tr '\t' ' ' |
-      sed -E 's/[[:space:]]+/ /g' |
-      sed 's/--/ - /g' |
-      sed 's/"/'\''/g' |
-      sed 's/[^[:print:]]//g' |
-      sed 's/^ *//; s/ *$//' |
-      cut -c1-180
+    fortune -s | tr -d '\r' | tr '\n' ' ' | tr '\t' ' ' | sed -E 's/[[:space:]]+/ /g' | sed 's/--/ - /g' | sed 's/"/'\''/g' | sed 's/[^[:print:]]//g' | sed 's/^ *//; s/ *$//' | cut -c1-180
   else
     local quotes=(
       "focus is a matter of deciding what things you're not going to do."
@@ -131,46 +117,64 @@ _random_quote() {
   fi
 }
 
-# ── Session runner ───────────────────────────────────────────────────────────
+# ── Fallback countdown ────────────────────────────────────────────────────────
+
+_fallback_timer() {
+  local total_secs=$(($1 * 60))
+  local remaining=$total_secs
+  tput civis 2>/dev/null
+  while ((remaining > 0)); do
+    local m=$((remaining / 60))
+    local s=$((remaining % 60))
+    local pct=$(((total_secs - remaining) * 100 / total_secs))
+    local bar_filled=$((pct / 5))
+    local bar=""
+    for ((i = 0; i < 20; i++)); do
+      ((i < bar_filled)) && bar+="█" || bar+="░"
+    done
+    printf "\r  ⏱  $(bold "%02d:%02d")  [%s] %3d%%" "$m" "$s" "$bar" "$pct"
+    sleep 1
+    ((remaining--))
+  done
+  printf "\r  ⏱  $(green "00:00")  [████████████████████] 100%%\n"
+}
+
+# ── Session runner ────────────────────────────────────────────────────────────
 
 run_session() {
   QUOTE=$(_random_quote)
   START_TIME=$(date +%s)
-
   echo ""
-  echo "  $(bold "starting ${DURATION}-minute session")"
+  echo "  $(bold "starting ${DURATION}-minute session")  $(dim "(ctrl+c to end early)")"
   echo ""
-
   if command -v arttime &>/dev/null; then
-    arttime --nolearn --random \
-      -g "${DURATION}m" \
-      -t "❝ $QUOTE ❞"
+    arttime --nolearn --random -g "${DURATION}m" -t "❝ $QUOTE ❞"
   else
-    echo "  $(yellow '⚠') arttime not found — using fallback timer"
-    sleep "${DURATION}m"
+    echo "  $(dim "❝ $QUOTE ❞")"
+    echo ""
+    _fallback_timer "$DURATION"
   fi
-
-  END_TIME=$(date +%s)
-  ELAPSED=$(((END_TIME - START_TIME) / 60))
 }
 
-# ── Finish session ────────────────────────────────────────────────────────────
+# ── Cleanup / finish session ──────────────────────────────────────────────────
 
-_finish() {
+_cleanup() {
+  tput cnorm 2>/dev/null
   echo ""
-
   [[ "$SITES_BLOCKED" == "1" ]] && unblock_sites
-
-  echo ""
-  echo "  $(bold "session ended") — $(date '+%H:%M')"
-
-  if ((ELAPSED >= DURATION)); then
-    echo "  $(green "✓ completed") — you focused for $(bold "${ELAPSED}") minutes."
-  else
-    echo "  $(yellow "⚠ quit early") — you focused for $(bold "${ELAPSED}") minutes."
+  if [[ -n "$START_TIME" ]]; then
+    END_TIME=$(date +%s)
+    ELAPSED=$(((END_TIME - START_TIME) / 60))
+    echo ""
+    echo "  $(bold "session ended") — $(date '+%H:%M')"
+    if ((ELAPSED >= DURATION)); then
+      echo "  $(green "✓ completed") — you focused for $(bold "${ELAPSED}") minutes."
+    else
+      echo "  $(yellow "⚠ quit early") — you focused for $(bold "${ELAPSED}") minutes."
+    fi
   fi
-
   echo ""
+  exit 0
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -181,34 +185,28 @@ main() {
   echo "  $(bold "lockin")"
   echo "  $(dim "────────────────────────")"
   echo ""
-
   printf "  $(bold "how many minutes?") "
   read -r DURATION
   if ! [[ "$DURATION" =~ ^[0-9]+$ ]] || ((DURATION == 0)); then
     echo "  $(red 'error:') enter a positive whole number." >&2
     exit 1
   fi
-
   printf "  $(bold "block distracting websites?") (y/n) "
   read -r BLOCK_WEB
-
   printf "  $(bold "close distracting apps?") (y/n) "
   read -r BLOCK_APPS
-
   echo ""
   echo "  $(dim "────────────────────────")"
-
   SITES_BLOCKED=0
-
   if [[ "$BLOCK_WEB" =~ ^[Yy] ]]; then
     block_sites
     SITES_BLOCKED=1
   fi
-
   [[ "$BLOCK_APPS" =~ ^[Yy] ]] && kill_apps
-
+  trap '_cleanup' SIGINT SIGTERM
   run_session
-  _finish
+  trap - SIGINT SIGTERM
+  _cleanup
 }
 
 main "$@"
